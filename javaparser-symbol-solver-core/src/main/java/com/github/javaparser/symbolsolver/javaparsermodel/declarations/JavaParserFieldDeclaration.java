@@ -23,8 +23,10 @@ package com.github.javaparser.symbolsolver.javaparsermodel.declarations;
 
 import com.github.javaparser.ast.AccessSpecifier;
 import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.resolution.declarations.AssociableToAST;
 import com.github.javaparser.resolution.declarations.ResolvedFieldDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedTypeDeclaration;
 import com.github.javaparser.resolution.types.ResolvedType;
@@ -38,7 +40,7 @@ import static com.github.javaparser.symbolsolver.javaparser.Navigator.demandPare
 /**
  * @author Federico Tomassetti
  */
-public class JavaParserFieldDeclaration implements ResolvedFieldDeclaration {
+public class JavaParserFieldDeclaration implements ResolvedFieldDeclaration, AssociableToAST<FieldDeclaration> {
 
     private VariableDeclarator variableDeclarator;
     private com.github.javaparser.ast.body.FieldDeclaration wrappedNode;
@@ -106,5 +108,10 @@ public class JavaParserFieldDeclaration implements ResolvedFieldDeclaration {
             return JavaParserFacade.get(typeSolver).getTypeDeclaration(typeDeclaration.get());
         }
         throw new IllegalStateException();
+    }
+    
+    @Override
+    public Optional<FieldDeclaration> toAst() {
+        return Optional.ofNullable(wrappedNode);
     }
 }

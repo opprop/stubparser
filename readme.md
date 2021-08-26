@@ -1,7 +1,7 @@
 ## Stub Parser
 
-This package contains a parser for the Checker Framework's stub files:
-https://checkerframework.org/manual/#stub
+This project contains a parser for the Checker Framework's stub files:
+https://checkerframework.org/manual/#stub .
 It is a fork of the [JavaParser](http://javaparser.org) project.
 
 ## Differences between the StubParser and JavaParser
@@ -25,45 +25,74 @@ git diff HEAD original/master
 This section describes how to incorporate changes from JavaParser into
 StubParser.  Only developers, not users, of StubParser need to do this.
 
+### Preparation
+
 1. Fork [the StubParser project](https://github.com/typetools/stubparser) to your GitHub account.
-2. Enable Travis build for your fork of the StubParser. 
-[How to get started with Travis CI](https://docs.travis-ci.com/user/getting-started/#To-get-started-with-Travis-CI).
 3. Clone the repository, using *one* of the following two commands:
 ```bash
 git clone git@github.com:{user.name}/stubparser.git
 git clone https://github.com/{user.name}/stubparser
 ```
-4. Update from StubParser.
+
+### Updating
+
+1. Update from StubParser.
 ```bash
 cd stubparser
 git pull --ff-only https://github.com/typetools/stubparser
 ```
-5. Create and checkout a new branch named `updating`.
-```bash
-git checkout -b updating
-```
-6. Pull the upstream of [the JavaParser project](https://github.com/javaparser/javaparser).
-Find an appropriate [tag name](https://github.com/javaparser/javaparser/tags)
+2. Find an appropriate [tag name](https://github.com/javaparser/javaparser/tags)
 such as `javaparser-parent-3.10.2`.
+3. Create and checkout a new branch
+```bash
+git checkout -b updating-TAG-NAME
+```
+4. Pull the upstream of [the JavaParser project](https://github.com/javaparser/javaparser).
 ```bash
 git pull https://github.com/javaparser/javaparser TAG-NAME
 ```
-7. Resolve conflicts if required and commit it.
-8. Run maven tests in the root directory. If any tests fail, fix them before continuing.
+5. Resolve conflicts if required and commit it.
+6. Update the StubParser version to the JavaParser version in the `<finalName>` block of `javaparser-core/pom.xml`
+7. Run Maven tests in the root directory:
 ```bash
 mvn install test
 ```
-9. Run Checker Framework tests, using your StubParser branch. If any tests fail, fix them before continuing.
+If any tests fail, fix them before continuing.
+
+8. Update the stubparser version number in the Checker Framework.  In
+`checker-framework/build.gradle`, update the version of the `stubparserJar`.
+Commit and push this change to a branch with the same name as your StubParser branch.
+9. Run Checker Framework tests (`./gradlew build`), using your StubParser branch.
+If any tests fail, fix them before continuing.
 10. Push commits to your fork of the StubParser.
 ```bash
 git push
 ```
-11. Check that the Travis build was successful. If not, resolve the issues and repeat steps 7-9.
-12. Create a [pull request to `typetools/stubparser`](https://github.com/typetools/stubparser).
-When merging the pull request, give it a commit message like "Update to JavaParser 3.10.2".
+GitHub Actions CI will not run for your branch.
+
+11. Create a [pull request to `typetools/stubparser`](https://github.com/typetools/stubparser).
+Give it a title like "Update to JavaParser 3.10.2".
 Do *not* squash-and-merge the pull request;
 you want to keep a history of what upstream commits were merged in.
 
+12. Create a [pull request to `typetools/checker-framework`](https://github.com/typetools/checkerframework).
+Give it a title like "Update to StubParser 3.10.2".
+
+
+## Changes to StubParser that break the Checker Framework
+
+If you commit a change to the StubParser that breaks the Checker Framework,
+then change the StubParser version number.  Do this only if necessary (probably
+not for minor bug fixes), because it breaks the `mvn javadoc:javadoc` command.
+ * In `javaparser-core/pom.xml`, in the `<finalName>` block.
+ * In the Checker Framework's top-level `build.gradle` file, on the
+   `stubparserJar =` line.
+
+
+<!--
+    Note that edits to this readme should be done via `docs/readme.md`.
+    Modifying this file directly within the root directory risks it being overwritten. 
+-->
 
 ## Original JavaParser README
 
@@ -80,78 +109,78 @@ The remainder of this README file is the original JavaParser README.
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2667378.svg)](https://doi.org/10.5281/zenodo.2667378)
 
 
-This project contains a set of libraries implementing a Java 1.0 - Java 14 Parser with advanced analysis functionalities. This includes preview features to Java 13, with Java 14 preview features work-in-progress.
+This project contains a set of libraries implementing a Java 1.0 - Java 15 Parser with advanced analysis functionalities. This includes preview features to Java 13, with Java 14 preview features work-in-progress.
 
 Our main site is at [JavaParser.org](http://javaparser.org)
 
 ## Setup
 
-The project binaries are available in Maven Central. 
+The project binaries are available in Maven Central.
 
 We strongly advise users to adopt Maven, Gradle or another build system for their projects.
-If you are not familiar with them we suggest taking a look at the maven quickstart projects 
-([javaparser-maven-sample](https://github.com/javaparser/javaparser-maven-sample), 
+If you are not familiar with them we suggest taking a look at the maven quickstart projects
+([javaparser-maven-sample](https://github.com/javaparser/javaparser-maven-sample),
 [javasymbolsolver-maven-sample](https://github.com/javaparser/javasymbolsolver-maven-sample)).
 
 Just add the following to your maven configuration or tailor to your own dependency management system.
 
 [Please refer to the Migration Guide when upgrading from 2.5.1 to 3.0.0+](https://github.com/javaparser/javaparser/wiki/Migration-Guide)
 
-**Maven**: 
+**Maven**:
 
 ```xml
 <dependency>
     <groupId>com.github.javaparser</groupId>
     <artifactId>javaparser-symbol-solver-core</artifactId>
-    <version>3.16.0</version>
+    <version>3.22.1</version>
 </dependency>
 ```
 
 **Gradle**:
 
 ```
-implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.16.0'
+implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.22.1'
 ```
 
-Since Version 3.5.10, the JavaParser project includes the JavaSymbolSolver. 
-While JavaParser generates an Abstract Syntax Tree, JavaSymbolSolver analyzes that AST and is able to find 
+Since Version 3.5.10, the JavaParser project includes the JavaSymbolSolver.
+While JavaParser generates an Abstract Syntax Tree, JavaSymbolSolver analyzes that AST and is able to find
 the relation between an element and its declaration (e.g. for a variable name it could be a parameter of a method, providing information about its type, position in the AST, ect).
 
 Using the dependency above will add both JavaParser and JavaSymbolSolver to your project. If you only need the core functionality of parsing Java source code in order to traverse and manipulate the generated AST, you can reduce your projects boilerplate by only including JavaParser to your project:
 
-**Maven**: 
+**Maven**:
 
 ```xml
 <dependency>
     <groupId>com.github.javaparser</groupId>
     <artifactId>javaparser-core</artifactId>
-    <version>3.16.0</version>
+    <version>3.22.1</version>
 </dependency>
 ```
 
 **Gradle**:
 
 ```
-implementation 'com.github.javaparser:javaparser-core:3.16.0'
+implementation 'com.github.javaparser:javaparser-core:3.22.1'
 ```
 
 Since version 3.6.17 the AST can be serialized to JSON.
 There is a separate module for this:
 
-**Maven**: 
+**Maven**:
 
 ```xml
 <dependency>
     <groupId>com.github.javaparser</groupId>
     <artifactId>javaparser-core-serialization</artifactId>
-    <version>3.16.0</version>
+    <version>3.22.1</version>
 </dependency>
 ```
 
 **Gradle**:
 
 ```
-implementation 'com.github.javaparser:javaparser-core-serialization:3.16.0'
+implementation 'com.github.javaparser:javaparser-core-serialization:3.22.1'
 ```
 
 ## How To Compile Sources

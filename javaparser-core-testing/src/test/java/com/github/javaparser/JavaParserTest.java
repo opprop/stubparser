@@ -47,7 +47,7 @@ import static com.github.javaparser.Providers.provider;
 import static com.github.javaparser.Range.range;
 import static com.github.javaparser.StaticJavaParser.*;
 import static com.github.javaparser.utils.TestUtils.assertInstanceOf;
-import static com.github.javaparser.utils.Utils.EOL;
+import static com.github.javaparser.utils.Utils.SYSTEM_EOL;
 import static org.junit.jupiter.api.Assertions.*;
 
 class JavaParserTest {
@@ -90,7 +90,7 @@ class JavaParserTest {
     	assertFalse(cu.getResult().isPresent());
     	assertEquals("Lexical error at line 1, column 34.  Encountered: \"\\\"\" (34), after : \"\\\"\\\\uABC\"", cu.getProblem(0).getMessage());
     }
-    
+
 	private static ParseResult<CompilationUnit> parseWithUnicodeEscapes(String code) {
 		ParserConfiguration config = new ParserConfiguration();
         config.setPreprocessUnicodeEscapes(true);
@@ -142,7 +142,7 @@ class JavaParserTest {
 
         Problem problem = result.getProblem(0);
         assertEquals(range(1, 9, 1, 17), problem.getLocation().get().toRange().get());
-        assertEquals("Parse error. Found <EOF>, expected one of  \";\" \"<\" \"@\" \"abstract\" \"boolean\" \"byte\" \"char\" \"class\" \"default\" \"double\" \"enum\" \"exports\" \"final\" \"float\" \"int\" \"interface\" \"long\" \"module\" \"native\" \"open\" \"opens\" \"private\" \"protected\" \"provides\" \"public\" \"requires\" \"short\" \"static\" \"strictfp\" \"synchronized\" \"to\" \"transient\" \"transitive\" \"uses\" \"void\" \"volatile\" \"with\" \"yield\" \"{\" \"}\" <IDENTIFIER>", problem.getMessage());
+        assertEquals("Parse error. Found <EOF>, expected one of  \";\" \"<\" \"@\" \"abstract\" \"boolean\" \"byte\" \"char\" \"class\" \"default\" \"double\" \"enum\" \"exports\" \"final\" \"float\" \"int\" \"interface\" \"long\" \"module\" \"native\" \"open\" \"opens\" \"private\" \"protected\" \"provides\" \"public\" \"record\" \"requires\" \"short\" \"static\" \"strictfp\" \"synchronized\" \"to\" \"transient\" \"transitive\" \"uses\" \"void\" \"volatile\" \"with\" \"yield\" \"{\" \"}\" <IDENTIFIER>", problem.getMessage());
         assertInstanceOf(ParseException.class, problem.getCause().get());
     }
 
@@ -163,9 +163,9 @@ class JavaParserTest {
 
     @Test
     void rangeOfIntersectionType() {
-        String code = "class A {" + EOL
-                + "  Object f() {" + EOL
-                + "    return (Comparator<Map.Entry<K, V>> & Serializable)(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + EOL
+        String code = "class A {" + SYSTEM_EOL
+                + "  Object f() {" + SYSTEM_EOL
+                + "    return (Comparator<Map.Entry<K, V>> & Serializable)(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + SYSTEM_EOL
                 + "}}";
         CompilationUnit cu = parse(code);
         MethodDeclaration methodDeclaration = cu.getClassByName("A").get().getMember(0).asMethodDeclaration();
@@ -177,9 +177,9 @@ class JavaParserTest {
 
     @Test
     void rangeOfCast() {
-        String code = "class A {" + EOL
-                + "  Object f() {" + EOL
-                + "    return (Comparator<Map.Entry<K, V>> & Serializable)(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + EOL
+        String code = "class A {" + SYSTEM_EOL
+                + "  Object f() {" + SYSTEM_EOL
+                + "    return (Comparator<Map.Entry<K, V>> & Serializable)(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + SYSTEM_EOL
                 + "}}";
         CompilationUnit cu = parse(code);
         MethodDeclaration methodDeclaration = cu.getClassByName("A").get().getMember(0).asMethodDeclaration();
@@ -190,9 +190,9 @@ class JavaParserTest {
 
     @Test
     void rangeOfCastNonIntersection() {
-        String code = "class A {" + EOL
-                + "  Object f() {" + EOL
-                + "    return (Comparator<Map.Entry<K, V>>               )(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + EOL
+        String code = "class A {" + SYSTEM_EOL
+                + "  Object f() {" + SYSTEM_EOL
+                + "    return (Comparator<Map.Entry<K, V>>               )(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + SYSTEM_EOL
                 + "}}";
         CompilationUnit cu = parse(code);
         MethodDeclaration methodDeclaration = cu.getClassByName("A").get().getMember(0).asMethodDeclaration();
@@ -203,9 +203,9 @@ class JavaParserTest {
 
     @Test
     void rangeOfLambda() {
-        String code = "class A {" + EOL
-                + "  Object f() {" + EOL
-                + "    return (Comparator<Map.Entry<K, V>> & Serializable)(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + EOL
+        String code = "class A {" + SYSTEM_EOL
+                + "  Object f() {" + SYSTEM_EOL
+                + "    return (Comparator<Map.Entry<K, V>> & Serializable)(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + SYSTEM_EOL
                 + "}}";
         CompilationUnit cu = parse(code);
         MethodDeclaration methodDeclaration = cu.getClassByName("A").get().getMember(0).asMethodDeclaration();
@@ -219,9 +219,9 @@ class JavaParserTest {
 
     @Test
     void rangeOfLambdaBody() {
-        String code = "class A {" + EOL
-                + "  Object f() {" + EOL
-                + "    return (Comparator<Map.Entry<K, V>> & Serializable)(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + EOL
+        String code = "class A {" + SYSTEM_EOL
+                + "  Object f() {" + SYSTEM_EOL
+                + "    return (Comparator<Map.Entry<K, V>> & Serializable)(c1, c2) -> c1.getKey().compareTo(c2.getKey()); " + SYSTEM_EOL
                 + "}}";
         CompilationUnit cu = parse(code);
         MethodDeclaration methodDeclaration = cu.getClassByName("A").get().getMember(0).asMethodDeclaration();
@@ -303,9 +303,18 @@ class JavaParserTest {
     void parseTypeDeclaration() {
         StaticJavaParser.parseTypeDeclaration("enum Z {A, B}");
     }
-    
+
     @Test
     void xxx(){
         YamlPrinter.print(StaticJavaParser.parse("class X{}"));
+    }
+
+    @Test
+    void issue2879() {
+        StaticJavaParser.parse(
+            "public class Test {" +
+            "    public void method(int @MyAnno ... param) {}" +
+            "}" +
+            "@Target(java.lang.annotation.ElementType.TYPE_USE) @interface MyAnno {}");
     }
 }

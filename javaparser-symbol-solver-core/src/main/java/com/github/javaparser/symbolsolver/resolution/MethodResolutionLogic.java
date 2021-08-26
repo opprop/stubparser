@@ -21,6 +21,18 @@
 
 package com.github.javaparser.symbolsolver.resolution;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
 import com.github.javaparser.resolution.MethodAmbiguityException;
 import com.github.javaparser.resolution.MethodUsage;
 import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
@@ -38,22 +50,12 @@ import com.github.javaparser.symbolsolver.model.resolution.SymbolReference;
 import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
 import com.github.javaparser.symbolsolver.model.typesystem.ReferenceTypeImpl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
 /**
  * @author Federico Tomassetti
  */
 public class MethodResolutionLogic {
+    
+    private static String JAVA_LANG_OBJECT = Object.class.getCanonicalName();
 
     private static List<ResolvedType> groupVariadicParamValues(List<ResolvedType> argumentsTypes, int startVariadic, ResolvedType variadicType) {
         List<ResolvedType> res = new ArrayList<>(argumentsTypes.subList(0, startVariadic));
@@ -180,7 +182,7 @@ public class MethodResolutionLogic {
                 matchedParameters.put(expectedDeclaredType.asTypeParameter().getName(), actualArgumentType);
                 continue;
             }
-
+            
             boolean isAssignableWithoutSubstitution = expectedDeclaredType.isAssignableBy(actualArgumentType) ||
                     (methodDeclaration.getParam(i).isVariadic() && new ResolvedArrayType(expectedDeclaredType).isAssignableBy(actualArgumentType));
 
@@ -202,6 +204,13 @@ public class MethodResolutionLogic {
                         needForWildCardTolerance = true;
                         continue;
                     }
+                    // if the expected is java.lang.Math.max(double,double) and the type parameters are defined with constrain
+                    // for example LambdaConstraintType{bound=TypeVariable {ReflectionTypeParameter{typeVariable=T}}}, LambdaConstraintType{bound=TypeVariable {ReflectionTypeParameter{typeVariable=U}}}
+                    // we want to keep this method for future resolution
+                    if (actualArgumentType.isConstraint() && withWildcardTolerance && expectedDeclaredType.isPrimitive()) {
+                        needForWildCardTolerance = true;
+                        continue;
+                    }
                     if (methodIsDeclaredWithVariadicParameter && i == countOfMethodParametersDeclared - 1) {
                         if (new ResolvedArrayType(expectedDeclaredType).isAssignableBy(actualArgumentType)) {
                             continue;
@@ -220,6 +229,9 @@ public class MethodResolutionLogic {
             return isAssignableMatchTypeParameters(expected.asReferenceType(), actual.asReferenceType(), matchedParameters);
         } else if (expected.isTypeVariable()) {
             matchedParameters.put(expected.asTypeParameter().getName(), actual);
+            return true;
+        } else if (expected.isArray()) {
+            matchedParameters.put(expected.asArrayType().getComponentType().toString(), actual);
             return true;
         } else {
             throw new UnsupportedOperationException(expected.getClass().getCanonicalName() + " " + actual.getClass().getCanonicalName());
@@ -260,8 +272,9 @@ public class MethodResolutionLogic {
             if (expectedParam.isReferenceType() && actualParam.isReferenceType()) {
                 ResolvedReferenceType r1 = expectedParam.asReferenceType();
                 ResolvedReferenceType r2 = actualParam.asReferenceType();
-
-                return isAssignableMatchTypeParametersMatchingQName(r1, r2, matchedParameters);
+                // we can have r1=A and r2=A.B (with B extends A and B is an inner class of A)
+                // in this case we want to verify expected parameter from the actual parameter ancestors 
+                return isAssignableMatchTypeParameters(r1, r2, matchedParameters);
             }
 
             if (expectedParam.isTypeVariable()) {
@@ -315,7 +328,7 @@ public class MethodResolutionLogic {
                 } else if (bounds.size() == 1) {
                     return bounds.get(0).getType();
                 } else {
-                    return new ReferenceTypeImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver);
+                    return new ReferenceTypeImpl(typeSolver.solveType(JAVA_LANG_OBJECT), typeSolver);
                 }
             }
             return type;
@@ -422,15 +435,15 @@ public class MethodResolutionLogic {
             // Consider cases where type variables can be replaced (e.g. add(E element) vs add(String element))
             for (ResolvedTypeParameterDeclaration tp : typeParameters) {
                 if (tp.getBounds().isEmpty()) {
-                    //expectedArgumentType = expectedArgumentType.replaceTypeVariables(tp.getName(), new ReferenceTypeUsageImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver));
-                    expectedArgumentType = expectedArgumentType.replaceTypeVariables(tp, ResolvedWildcard.extendsBound(new ReferenceTypeImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver)));
+                    //expectedArgumentType = expectedArgumentType.replaceTypeVariables(tp.getName(), new ReferenceTypeUsageImpl(typeSolver.solveType(JAVA_LANG_OBJECT), typeSolver));
+                    expectedArgumentType = expectedArgumentType.replaceTypeVariables(tp, ResolvedWildcard.extendsBound(new ReferenceTypeImpl(typeSolver.solveType(JAVA_LANG_OBJECT), typeSolver)));
                 } else if (tp.getBounds().size() == 1) {
                     ResolvedTypeParameterDeclaration.Bound bound = tp.getBounds().get(0);
                     if (bound.isExtends()) {
                         //expectedArgumentType = expectedArgumentType.replaceTypeVariables(tp.getName(), bound.getType());
                         expectedArgumentType = expectedArgumentType.replaceTypeVariables(tp, ResolvedWildcard.extendsBound(bound.getType()));
                     } else {
-                        //expectedArgumentType = expectedArgumentType.replaceTypeVariables(tp.getName(), new ReferenceTypeUsageImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver));
+                        //expectedArgumentType = expectedArgumentType.replaceTypeVariables(tp.getName(), new ReferenceTypeUsageImpl(typeSolver.solveType(JAVA_LANG_OBJECT), typeSolver));
                         expectedArgumentType = expectedArgumentType.replaceTypeVariables(tp, ResolvedWildcard.superBound(bound.getType()));
                     }
                 } else {
@@ -442,13 +455,13 @@ public class MethodResolutionLogic {
             ResolvedType expectedTypeWithSubstitutions = expectedTypeWithoutSubstitutions;
             for (ResolvedTypeParameterDeclaration tp : typeParameters) {
                 if (tp.getBounds().isEmpty()) {
-                    expectedTypeWithSubstitutions = expectedTypeWithSubstitutions.replaceTypeVariables(tp, new ReferenceTypeImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver));
+                    expectedTypeWithSubstitutions = expectedTypeWithSubstitutions.replaceTypeVariables(tp, new ReferenceTypeImpl(typeSolver.solveType(JAVA_LANG_OBJECT), typeSolver));
                 } else if (tp.getBounds().size() == 1) {
                     ResolvedTypeParameterDeclaration.Bound bound = tp.getBounds().get(0);
                     if (bound.isExtends()) {
                         expectedTypeWithSubstitutions = expectedTypeWithSubstitutions.replaceTypeVariables(tp, bound.getType());
                     } else {
-                        expectedTypeWithSubstitutions = expectedTypeWithSubstitutions.replaceTypeVariables(tp, new ReferenceTypeImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver));
+                        expectedTypeWithSubstitutions = expectedTypeWithSubstitutions.replaceTypeVariables(tp, new ReferenceTypeImpl(typeSolver.solveType(JAVA_LANG_OBJECT), typeSolver));
                     }
                 } else {
                     throw new UnsupportedOperationException();
@@ -546,7 +559,7 @@ public class MethodResolutionLogic {
         if (applicableMethods.size() == 1) {
             return SymbolReference.solved(applicableMethods.get(0));
         }
-
+        
         // Examine the applicable methods found, and evaluate each to determine the "best" one
         ResolvedMethodDeclaration winningCandidate = applicableMethods.get(0);
         ResolvedMethodDeclaration other = null;
@@ -559,21 +572,33 @@ public class MethodResolutionLogic {
                 possibleAmbiguity = false;
                 winningCandidate = other;
             } else {
-                if (winningCandidate.declaringType().getQualifiedName().equals(other.declaringType().getQualifiedName())) {
+                // 15.12.2.5. Choosing the Most Specific Method
+                // One applicable method m1 is more specific than another applicable method m2, for an invocation with argument
+                // expressions e1, ..., ek, if any of the following are true:
+                // m2 is generic, and m1 is inferred to be more specific than m2 for argument expressions e1, ..., ek by §18.5.4.
+                // 18.5.4. More Specific Method Inference should be verified 
+                // ...
+                if (winningCandidate.isGeneric() && !other.isGeneric()) {
+                    winningCandidate = other;
+                } else if (!winningCandidate.isGeneric() && other.isGeneric()) {
+                    // nothing to do at this stage winningCandidate is the winner
+                } else if (winningCandidate.declaringType().getQualifiedName().equals(other.declaringType().getQualifiedName())) {
                     possibleAmbiguity = true;
                 } else {
                     // we expect the methods to be ordered such that inherited methods are later in the list
                 }
             }
         }
-
+        
         if (possibleAmbiguity) {
             // pick the first exact match if it exists
             if (!isExactMatch(winningCandidate, argumentsTypes)) {
                 if (isExactMatch(other, argumentsTypes)) {
                     winningCandidate = other;
                 } else {
-                    throw new MethodAmbiguityException("Ambiguous method call: cannot find a most applicable method: " + winningCandidate + ", " + other);
+                    throw new MethodAmbiguityException(
+                            "Ambiguous method call: cannot find a most applicable method: " + winningCandidate
+                                    + ", " + other);
                 }
             }
         }
@@ -612,6 +637,8 @@ public class MethodResolutionLogic {
         final int numberOfArgs = argumentTypes.size();
         final ResolvedType lastArgType = numberOfArgs > 0 ? argumentTypes.get(numberOfArgs - 1) : null;
         final boolean isLastArgArray = lastArgType != null && lastArgType.isArray();
+        int omittedArgs = 0;
+        boolean isMethodAMoreSpecific = false;
 
         // If one method declaration has exactly the correct amount of parameters and is not variadic then it is always
         // preferred to a declaration that is variadic (and hence possibly also has a different amount of parameters).
@@ -622,12 +649,22 @@ public class MethodResolutionLogic {
                 !isLastArgArray))) {
             return false;
         }
+        
+        // If both methods are variadic but the calling method omits any varArgs, bump the omitted args to
+        // ensure the varargs type is considered when determining which method is more specific
+        if (aVariadic && bVariadic && aNumberOfParams == bNumberOfParams && numberOfArgs == aNumberOfParams - 1) {
+        	omittedArgs++;
+        }
 
         // Either both methods are variadic or neither is. So we must compare the parameter types.
-        for (int i = 0; i < numberOfArgs; i++) {
+        for (int i = 0; i < numberOfArgs + omittedArgs; i++) {
             ResolvedType paramTypeA = getMethodsExplicitAndVariadicParameterType(methodA, i);
             ResolvedType paramTypeB = getMethodsExplicitAndVariadicParameterType(methodB, i);
-            ResolvedType argType = argumentTypes.get(i);
+            
+            ResolvedType argType = null;
+            if (i < argumentTypes.size()) {
+            	argType = argumentTypes.get(i);
+            }
 
             // Safety: if a type is null it means a signature with too few parameters managed to get to this point.
             // This should not happen but it also means that this signature is immediately disqualified.
@@ -641,16 +678,26 @@ public class MethodResolutionLogic {
             // The method call will call foo(long), as it requires a widening primitive conversion from int to long
             // instead of a boxing conversion from int to Integer. See JLS §15.12.2.
             // This is what we check here.
-            else if (paramTypeA.isPrimitive() == argType.isPrimitive() &&
+            else if (argType != null &&
+            		paramTypeA.isPrimitive() == argType.isPrimitive() &&
                     paramTypeB.isPrimitive() != argType.isPrimitive() &&
                     paramTypeA.isAssignableBy(argType)) {
 
                 return true;
-            } else if (paramTypeB.isPrimitive() == argType.isPrimitive() &&
+            } else if (argType != null &&
+            		paramTypeB.isPrimitive() == argType.isPrimitive() &&
                     paramTypeA.isPrimitive() != argType.isPrimitive() &&
                     paramTypeB.isAssignableBy(argType)) {
 
                 return false;
+            // if paramA and paramB are not the last parameters
+            // and the type of paramA or paramB (which are not more specific at this stage) is java.lang.Object
+            // then we have to consider others parameters before concluding
+            } else if ((i < numberOfArgs - 1)
+                    && (isJavaLangObject(paramTypeB) || (isJavaLangObject(paramTypeA)))) {
+                // consider others parameters
+                // but eventually mark the method A as more specific if the methodB has an argument of type java.lang.Object
+                isMethodAMoreSpecific = isMethodAMoreSpecific || isJavaLangObject(paramTypeB);
             }
             // If we get to this point then we check whether one of the methods contains a parameter type that is more
             // specific. If it does, we can assume the entire declaration is more specific as we would otherwise have
@@ -678,7 +725,11 @@ public class MethodResolutionLogic {
             return !isLastArgArray;
         }
 
-        return false;
+        return isMethodAMoreSpecific;
+    }
+    
+    private static boolean isJavaLangObject(ResolvedType paramType ) {
+        return paramType.isReferenceType() && paramType.asReferenceType().getQualifiedName().equals("java.lang.Object");
     }
 
     private static boolean isMoreSpecific(MethodUsage methodA, MethodUsage methodB) {

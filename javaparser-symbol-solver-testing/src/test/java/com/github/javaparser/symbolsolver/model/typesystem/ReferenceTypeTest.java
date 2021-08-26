@@ -21,6 +21,41 @@
 
 package com.github.javaparser.symbolsolver.model.typesystem;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.collection.IsIterableContainingInAnyOrder.containsInAnyOrder;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.net.ProtocolException;
+import java.nio.Buffer;
+import java.nio.CharBuffer;
+import java.nio.file.FileSystemException;
+import java.util.AbstractCollection;
+import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.RandomAccess;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseStart;
 import com.github.javaparser.ParserConfiguration;
@@ -30,11 +65,13 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedClassDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedInterfaceDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
+import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedTypeParameterDeclaration;
 import com.github.javaparser.resolution.types.ResolvedPrimitiveType;
 import com.github.javaparser.resolution.types.ResolvedReferenceType;
 import com.github.javaparser.resolution.types.ResolvedType;
 import com.github.javaparser.resolution.types.ResolvedTypeVariable;
+import com.github.javaparser.resolution.types.ResolvedUnionType;
 import com.github.javaparser.resolution.types.ResolvedVoidType;
 import com.github.javaparser.resolution.types.ResolvedWildcard;
 import com.github.javaparser.symbolsolver.AbstractSymbolResolutionTest;
@@ -44,20 +81,6 @@ import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionClassDeclara
 import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.google.common.collect.ImmutableList;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.io.Serializable;
-import java.nio.Buffer;
-import java.nio.CharBuffer;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.collection.IsIterableContainingInAnyOrder.containsInAnyOrder;
-import static org.junit.jupiter.api.Assertions.*;
 
 class ReferenceTypeTest extends AbstractSymbolResolutionTest {
 
@@ -70,6 +93,9 @@ class ReferenceTypeTest extends AbstractSymbolResolutionTest {
     private ReferenceTypeImpl object;
     private ReferenceTypeImpl string;
     private TypeSolver typeSolver;
+    private ReferenceTypeImpl ioException;
+    private ResolvedType unionWithIOExceptionAsCommonAncestor;
+    private ResolvedType unionWithThrowableAsCommonAncestor;
 
     @BeforeEach
     void setup() {
@@ -94,6 +120,15 @@ class ReferenceTypeTest extends AbstractSymbolResolutionTest {
         listOfWildcardSuperString = new ReferenceTypeImpl(
                 new ReflectionInterfaceDeclaration(List.class, typeSolver),
                 ImmutableList.of(ResolvedWildcard.superBound(string)), typeSolver);
+        ioException = new ReferenceTypeImpl(new ReflectionClassDeclaration(IOException.class, typeSolver), typeSolver);
+        unionWithIOExceptionAsCommonAncestor = new ResolvedUnionType(Arrays.asList(
+                new ReferenceTypeImpl(new ReflectionClassDeclaration(ProtocolException.class, typeSolver), typeSolver),
+                new ReferenceTypeImpl(new ReflectionClassDeclaration(FileSystemException.class, typeSolver), typeSolver)
+        ));
+        unionWithThrowableAsCommonAncestor = new ResolvedUnionType(Arrays.asList(
+                new ReferenceTypeImpl(new ReflectionClassDeclaration(ClassCastException.class, typeSolver), typeSolver),
+                new ReferenceTypeImpl(new ReflectionClassDeclaration(AssertionError.class, typeSolver), typeSolver)
+        ));
     }
 
     @Test
@@ -219,6 +254,12 @@ class ReferenceTypeTest extends AbstractSymbolResolutionTest {
         ResolvedReferenceType numberType = new ReferenceTypeImpl(new ReflectionClassDeclaration(Number.class, typeSolver), typeSolver);
         ResolvedReferenceType intType = new ReferenceTypeImpl(new ReflectionClassDeclaration(Integer.class, typeSolver), typeSolver);
         ResolvedReferenceType doubleType = new ReferenceTypeImpl(new ReflectionClassDeclaration(Double.class, typeSolver), typeSolver);
+        ResolvedReferenceType byteType = new ReferenceTypeImpl(new ReflectionClassDeclaration(Byte.class, typeSolver), typeSolver);
+        ResolvedReferenceType shortType = new ReferenceTypeImpl(new ReflectionClassDeclaration(Short.class, typeSolver), typeSolver);
+        ResolvedReferenceType charType = new ReferenceTypeImpl(new ReflectionClassDeclaration(Character.class, typeSolver), typeSolver);
+        ResolvedReferenceType longType = new ReferenceTypeImpl(new ReflectionClassDeclaration(Long.class, typeSolver), typeSolver);
+        ResolvedReferenceType booleanType = new ReferenceTypeImpl(new ReflectionClassDeclaration(Boolean.class, typeSolver), typeSolver);
+        ResolvedReferenceType floatType = new ReferenceTypeImpl(new ReflectionClassDeclaration(Float.class, typeSolver), typeSolver);
 
         assertEquals(true, numberType.isAssignableBy(ResolvedPrimitiveType.INT));
         assertEquals(true, numberType.isAssignableBy(ResolvedPrimitiveType.DOUBLE));
@@ -228,6 +269,67 @@ class ReferenceTypeTest extends AbstractSymbolResolutionTest {
         assertEquals(false, numberType.isAssignableBy(ResolvedPrimitiveType.BOOLEAN));
         assertEquals(true, intType.isAssignableBy(ResolvedPrimitiveType.INT));
         assertEquals(true, doubleType.isAssignableBy(ResolvedPrimitiveType.DOUBLE));
+        assertEquals(true, byteType.isAssignableBy(ResolvedPrimitiveType.BYTE));
+        assertEquals(true, shortType.isAssignableBy(ResolvedPrimitiveType.SHORT));
+        assertEquals(true, charType.isAssignableBy(ResolvedPrimitiveType.CHAR));
+        assertEquals(true, longType.isAssignableBy(ResolvedPrimitiveType.LONG));
+        assertEquals(true, booleanType.isAssignableBy(ResolvedPrimitiveType.BOOLEAN));
+        assertEquals(true, floatType.isAssignableBy(ResolvedPrimitiveType.FLOAT));
+    }
+
+    @Test
+    void testIsCorresponding() {
+
+        // ResolvedReferenceTypeTester is defined to allow to test protected method isCorrespondingBoxingType(..)
+        class ResolvedReferenceTypeTester extends ReferenceTypeImpl {
+
+            public ResolvedReferenceTypeTester(ResolvedReferenceTypeDeclaration typeDeclaration,
+                                               TypeSolver typeSolver) {
+                super(typeDeclaration, typeSolver);
+            }
+
+            public boolean isCorrespondingBoxingType(String name) {
+                return super.isCorrespondingBoxingType(name);
+            }
+
+        }
+
+        ResolvedReferenceTypeTester numberType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(Number.class, typeSolver), typeSolver);
+        ResolvedReferenceTypeTester intType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(Integer.class, typeSolver), typeSolver);
+        ResolvedReferenceTypeTester doubleType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(Double.class, typeSolver), typeSolver);
+        ResolvedReferenceTypeTester byteType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(Byte.class, typeSolver), typeSolver);
+        ResolvedReferenceTypeTester shortType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(Short.class, typeSolver), typeSolver);
+        ResolvedReferenceTypeTester charType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(Character.class, typeSolver), typeSolver);
+        ResolvedReferenceTypeTester longType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(Long.class, typeSolver), typeSolver);
+        ResolvedReferenceTypeTester booleanType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(Boolean.class, typeSolver), typeSolver);
+        ResolvedReferenceTypeTester floatType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(Float.class, typeSolver), typeSolver);
+
+        ResolvedReferenceTypeTester otherType = new ResolvedReferenceTypeTester(
+                new ReflectionClassDeclaration(String.class, typeSolver), typeSolver);
+
+        assertEquals(true, intType.isCorrespondingBoxingType(ResolvedPrimitiveType.INT.describe()));
+        assertEquals(true, doubleType.isCorrespondingBoxingType(ResolvedPrimitiveType.DOUBLE.describe()));
+        assertEquals(true, byteType.isCorrespondingBoxingType(ResolvedPrimitiveType.BYTE.describe()));
+        assertEquals(true, shortType.isCorrespondingBoxingType(ResolvedPrimitiveType.SHORT.describe()));
+        assertEquals(true, charType.isCorrespondingBoxingType(ResolvedPrimitiveType.CHAR.describe()));
+        assertEquals(true, longType.isCorrespondingBoxingType(ResolvedPrimitiveType.LONG.describe()));
+        assertEquals(true, booleanType.isCorrespondingBoxingType(ResolvedPrimitiveType.BOOLEAN.describe()));
+        assertEquals(true, floatType.isCorrespondingBoxingType(ResolvedPrimitiveType.FLOAT.describe()));
+
+        assertEquals(false, numberType.isCorrespondingBoxingType(ResolvedPrimitiveType.INT.describe()));
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            intType.isCorrespondingBoxingType("String");
+        });
     }
 
     @Test
@@ -253,6 +355,12 @@ class ReferenceTypeTest extends AbstractSymbolResolutionTest {
         assertEquals(false, linkedListOfString.isAssignableBy(collectionOfString));
         assertEquals(false, linkedListOfString.isAssignableBy(listOfStrings));
         assertEquals(true, linkedListOfString.isAssignableBy(linkedListOfString));
+    }
+    
+    @Test
+    void testIsAssignableByUnionType() {
+        assertEquals(true, ioException.isAssignableBy(unionWithIOExceptionAsCommonAncestor));
+        assertEquals(false, ioException.isAssignableBy(unionWithThrowableAsCommonAncestor));
     }
 
     @Test

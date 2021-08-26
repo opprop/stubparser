@@ -21,10 +21,15 @@
 
 package com.github.javaparser.symbolsolver.resolution;
 
+import java.util.List;
+import java.util.Optional;
+
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.resolution.MethodUsage;
 import com.github.javaparser.resolution.UnsolvedSymbolException;
+import com.github.javaparser.resolution.declarations.ResolvedEnumConstantDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedTypeDeclaration;
@@ -43,20 +48,20 @@ import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
 import com.github.javaparser.symbolsolver.model.resolution.Value;
 import com.github.javaparser.symbolsolver.model.typesystem.ReferenceTypeImpl;
 import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionClassDeclaration;
+import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionEnumDeclaration;
 import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * @author Federico Tomassetti
  */
 public class SymbolSolver {
 
-    private TypeSolver typeSolver;
+    private final TypeSolver typeSolver;
 
     public SymbolSolver(TypeSolver typeSolver) {
-        if (typeSolver == null) throw new IllegalArgumentException();
+        if (typeSolver == null) {
+            throw new IllegalArgumentException("Missing Parameter - Cannot initialise a SymbolSolver, without a way to solve types.");
+        }
 
         this.typeSolver = typeSolver;
     }
@@ -98,7 +103,7 @@ public class SymbolSolver {
         return solveMethod(methodName, argumentsTypes, JavaParserFactory.getContext(node, typeSolver));
     }
 
-    public ResolvedTypeDeclaration solveType(com.github.javaparser.ast.type.Type type) {
+    public ResolvedTypeDeclaration solveType(Type type) {
         if (type instanceof ClassOrInterfaceType) {
 
             // FIXME should call typesolver here!
@@ -147,6 +152,10 @@ public class SymbolSolver {
         }
         if (typeDeclaration instanceof ReflectionInterfaceDeclaration) {
             return ((ReflectionInterfaceDeclaration) typeDeclaration).solveSymbol(name, typeSolver);
+        }
+        if (typeDeclaration instanceof ReflectionEnumDeclaration) {
+            ResolvedEnumConstantDeclaration  red = ((ReflectionEnumDeclaration) typeDeclaration).getEnumConstant(name);
+            return SymbolReference.solved(red);
         }
         if (typeDeclaration instanceof JavassistClassDeclaration) {
             return ((JavassistClassDeclaration) typeDeclaration).solveSymbol(name, typeSolver);

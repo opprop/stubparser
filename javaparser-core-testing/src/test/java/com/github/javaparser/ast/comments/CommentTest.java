@@ -21,23 +21,32 @@
 
 package com.github.javaparser.ast.comments;
 
+import static com.github.javaparser.StaticJavaParser.parse;
+import static com.github.javaparser.utils.TestUtils.assertEqualsStringIgnoringEol;
+import static com.github.javaparser.utils.Utils.SYSTEM_EOL;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.javadoc.Javadoc;
 import com.github.javaparser.javadoc.description.JavadocDescription;
-import com.github.javaparser.printer.PrettyPrinterConfiguration;
-import org.junit.jupiter.api.Test;
-
-import static com.github.javaparser.StaticJavaParser.parse;
-import static com.github.javaparser.utils.TestUtils.assertEqualsNoEol;
-import static com.github.javaparser.utils.Utils.EOL;
-import static org.junit.jupiter.api.Assertions.*;
+import com.github.javaparser.printer.configuration.DefaultConfigurationOption;
+import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration;
+import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration.ConfigOption;
+import com.github.javaparser.printer.configuration.Indentation;
+import com.github.javaparser.printer.configuration.Indentation.IndentType;
+import com.github.javaparser.printer.configuration.PrinterConfiguration;
 
 class CommentTest {
 
-    private static final PrettyPrinterConfiguration PRETTY_PRINTER_CONFIG_TWO_INDENT = new PrettyPrinterConfiguration().setIndentSize(2);
+    private static final PrinterConfiguration PRETTY_PRINTER_CONFIG_TWO_INDENT = new DefaultPrinterConfiguration().addOption(new DefaultConfigurationOption(ConfigOption.INDENTATION, new Indentation(IndentType.SPACES, 2)));
 
     @Test
     void removeOrphanComment() {
@@ -75,20 +84,20 @@ class CommentTest {
     @Test
     void testReplaceDuplicateJavaDocComment() {
         // Arrange
-        CompilationUnit cu = parse("public class MyClass {" + EOL +
-                EOL +
-                "  /**" + EOL +
-                "   * Comment A" + EOL +
-                "   */" + EOL +
-                "  public void oneMethod() {" + EOL +
-                "  }" + EOL +
-                EOL +
-                "  /**" + EOL +
-                "   * Comment A" + EOL +
-                "   */" + EOL +
-                "  public void anotherMethod() {" + EOL +
-                "  }" + EOL +
-                "}" + EOL);
+        CompilationUnit cu = parse("public class MyClass {" + SYSTEM_EOL +
+                SYSTEM_EOL +
+                "  /**" + SYSTEM_EOL +
+                "   * Comment A" + SYSTEM_EOL +
+                "   */" + SYSTEM_EOL +
+                "  public void oneMethod() {" + SYSTEM_EOL +
+                "  }" + SYSTEM_EOL +
+                SYSTEM_EOL +
+                "  /**" + SYSTEM_EOL +
+                "   * Comment A" + SYSTEM_EOL +
+                "   */" + SYSTEM_EOL +
+                "  public void anotherMethod() {" + SYSTEM_EOL +
+                "  }" + SYSTEM_EOL +
+                "}" + SYSTEM_EOL);
 
         MethodDeclaration methodDeclaration = cu.findFirst(MethodDeclaration.class).get();
 
@@ -97,7 +106,7 @@ class CommentTest {
         methodDeclaration.setJavadocComment("", javadoc);
 
         // Assert
-        assertEqualsNoEol("public class MyClass {\n" +
+        assertEqualsStringIgnoringEol("public class MyClass {\n" +
                 "\n" +
                 "  /**\n" +
                 "   * Change Javadoc\n" +
@@ -116,21 +125,21 @@ class CommentTest {
     @Test
     void testRemoveDuplicateComment() {
         // Arrange
-        CompilationUnit cu = parse("public class MyClass {" + EOL +
-                EOL +
-                "  /**" + EOL +
-                "   * Comment A" + EOL +
-                "   */" + EOL +
-                "  public void oneMethod() {" + EOL +
-                "  }" + EOL +
-                EOL +
-                "  /**" + EOL +
-                "   * Comment A" + EOL +
-                "   */" + EOL +
-                "  public void anotherMethod() {" + EOL +
-                "  }" + EOL +
+        CompilationUnit cu = parse("public class MyClass {" + SYSTEM_EOL +
+                SYSTEM_EOL +
+                "  /**" + SYSTEM_EOL +
+                "   * Comment A" + SYSTEM_EOL +
+                "   */" + SYSTEM_EOL +
+                "  public void oneMethod() {" + SYSTEM_EOL +
+                "  }" + SYSTEM_EOL +
+                SYSTEM_EOL +
+                "  /**" + SYSTEM_EOL +
+                "   * Comment A" + SYSTEM_EOL +
+                "   */" + SYSTEM_EOL +
+                "  public void anotherMethod() {" + SYSTEM_EOL +
+                "  }" + SYSTEM_EOL +
                 "}" +
-                EOL);
+                SYSTEM_EOL);
 
         MethodDeclaration methodDeclaration = cu.findFirst(MethodDeclaration.class).get();
 
@@ -138,7 +147,7 @@ class CommentTest {
         methodDeclaration.removeComment();
 
         // Assert
-        assertEqualsNoEol("public class MyClass {\n" +
+        assertEqualsStringIgnoringEol("public class MyClass {\n" +
                 "\n" +
                 "  public void oneMethod() {\n" +
                 "  }\n" +
@@ -154,21 +163,21 @@ class CommentTest {
     @Test
     void testRemoveDuplicateJavaDocComment() {
         // Arrange
-        CompilationUnit cu = parse("public class MyClass {" + EOL +
-                EOL +
-                "  /**" + EOL +
-                "   * Comment A" + EOL +
-                "   */" + EOL +
-                "  public void oneMethod() {" + EOL +
-                "  }" + EOL +
-                EOL +
-                "  /**" + EOL +
-                "   * Comment A" + EOL +
-                "   */" + EOL +
-                "  public void anotherMethod() {" + EOL +
-                "  }" + EOL +
+        CompilationUnit cu = parse("public class MyClass {" + SYSTEM_EOL +
+                SYSTEM_EOL +
+                "  /**" + SYSTEM_EOL +
+                "   * Comment A" + SYSTEM_EOL +
+                "   */" + SYSTEM_EOL +
+                "  public void oneMethod() {" + SYSTEM_EOL +
+                "  }" + SYSTEM_EOL +
+                SYSTEM_EOL +
+                "  /**" + SYSTEM_EOL +
+                "   * Comment A" + SYSTEM_EOL +
+                "   */" + SYSTEM_EOL +
+                "  public void anotherMethod() {" + SYSTEM_EOL +
+                "  }" + SYSTEM_EOL +
                 "}" +
-                EOL);
+                SYSTEM_EOL);
 
         MethodDeclaration methodDeclaration = cu.findAll(MethodDeclaration.class).get(1);
 
@@ -176,7 +185,7 @@ class CommentTest {
         methodDeclaration.removeJavaDocComment();
 
         // Assert
-        assertEqualsNoEol("public class MyClass {\n" +
+        assertEqualsStringIgnoringEol("public class MyClass {\n" +
                 "\n" +
                 "  /**\n" +
                 "   * Comment A\n" +
@@ -187,5 +196,12 @@ class CommentTest {
                 "  public void anotherMethod() {\n" +
                 "  }\n" +
                 "}\n", cu.toString(PRETTY_PRINTER_CONFIG_TWO_INDENT));
+    }
+    
+    @Test()
+    void testVerifyOrphanCommentInsertedInEmptyBlock() {
+        BlockStmt block = new BlockStmt();
+        block.addOrphanComment(new LineComment("TODO"));
+        assertTrue(block.toString().contains("TODO"), "Block: " + block.toString());
     }
 }

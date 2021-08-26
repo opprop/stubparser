@@ -31,7 +31,7 @@ import static com.github.javaparser.ParseStart.COMPILATION_UNIT;
 import static com.github.javaparser.Providers.provider;
 import static com.github.javaparser.ast.Node.Parsedness.PARSED;
 import static com.github.javaparser.ast.Node.Parsedness.UNPARSABLE;
-import static com.github.javaparser.utils.Utils.EOL;
+import static com.github.javaparser.utils.Utils.SYSTEM_EOL;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ParseResultTest {
@@ -57,8 +57,8 @@ class ParseResultTest {
         assertThat(result.getProblems().size()).isEqualTo(1);
 
         Problem problem = result.getProblem(0);
-        assertThat(problem.getMessage()).isEqualTo("Parse error. Found \"{\", expected one of  \"enum\" \"exports\" \"module\" \"open\" \"opens\" \"provides\" \"requires\" \"strictfp\" \"to\" \"transitive\" \"uses\" \"with\" \"yield\" <IDENTIFIER>");
+        assertThat(problem.getMessage()).isEqualTo("Parse error. Found \"{\", expected one of  \"enum\" \"exports\" \"module\" \"open\" \"opens\" \"provides\" \"record\" \"requires\" \"strictfp\" \"to\" \"transitive\" \"uses\" \"with\" \"yield\" <IDENTIFIER>");
 
-        assertThat(result.toString()).startsWith("Parsing failed:" + EOL + "(line 1,col 1) Parse error.");
+        assertThat(result.toString()).startsWith("Parsing failed:" + SYSTEM_EOL + "(line 1,col 1) Parse error.");
     }
 }

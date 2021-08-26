@@ -26,6 +26,7 @@ import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.expr.AssignExpr;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.UnaryExpr;
 import com.github.javaparser.ast.expr.VariableDeclarationExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithStatements;
 import com.github.javaparser.ast.stmt.ForStmt;
@@ -57,7 +58,7 @@ public class ForStatementContext extends AbstractJavaParserContext<ForStmt> {
                         return SymbolReference.solved(JavaParserSymbolDeclaration.localVar(variableDeclarator, typeSolver));
                     }
                 }
-            } else if (!(expression instanceof AssignExpr || expression instanceof MethodCallExpr)) {
+            } else if (!(expression instanceof AssignExpr || expression instanceof MethodCallExpr || expression instanceof UnaryExpr)) {
                 throw new UnsupportedOperationException(expression.getClass().getCanonicalName());
             }
         }
@@ -65,18 +66,14 @@ public class ForStatementContext extends AbstractJavaParserContext<ForStmt> {
         if (demandParentNode(wrappedNode) instanceof NodeWithStatements) {
             return StatementContext.solveInBlock(name, typeSolver, wrappedNode);
         } else {
-            return getParent()
-                    .orElseThrow(() -> new RuntimeException("Parent context unexpectedly empty."))
-                    .solveSymbol(name);
+            return solveSymbolInParentContext(name);
         }
     }
 
     @Override
-    public SymbolReference<ResolvedMethodDeclaration> solveMethod(String name, List<ResolvedType> argumentsTypes,
-                                                                  boolean staticOnly) {
-        return getParent()
-                .orElseThrow(() -> new RuntimeException("Parent context unexpectedly empty."))
-                .solveMethod(name, argumentsTypes, false);
+    public SymbolReference<ResolvedMethodDeclaration> solveMethod(String name, List<ResolvedType> argumentsTypes, boolean staticOnly) {
+        // TODO: Document why staticOnly is forced to be false.
+        return solveMethodInParentContext(name, argumentsTypes, false);
     }
 
     @Override
